@@ -82,12 +82,12 @@ struct ScheduleView: View {
         .onAppear {
             viewModel.configure(with: settings.first)
         }
-        .onChange(of: viewModel.randomStartHour) { newValue in
+        .onChange(of: viewModel.randomStartHour) { _, newValue in
             if newValue >= viewModel.randomEndHour {
                 viewModel.randomEndHour = min(newValue + 1, 23)
             }
         }
-        .onChange(of: viewModel.randomEndHour) { newValue in
+        .onChange(of: viewModel.randomEndHour) { _, newValue in
             if newValue <= viewModel.randomStartHour {
                 viewModel.randomStartHour = max(newValue - 1, 0)
             }

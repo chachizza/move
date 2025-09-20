@@ -5,7 +5,7 @@ import UserNotifications
 /// Wraps `UNUserNotificationCenter` to manage authorization, categories, and action handling.
 /// https://developer.apple.com/documentation/usernotifications/unusernotificationcenter
 @MainActor
-final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+final class NotificationService: NSObject {
     private let center = UNUserNotificationCenter.current()
     private let container: ModelContainer
     private var schedulingService: SchedulingService?
@@ -57,16 +57,20 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     func replacePendingRequests(with requests: [UNNotificationRequest]) async {
         center.removeAllPendingNotificationRequests()
+        guard !requests.isEmpty else { return }
         for request in requests {
             await add(request: request)
         }
     }
 
     func add(request: UNNotificationRequest) async {
-        do {
-            try await center.add(request)
-        } catch {
-            print("Failed to schedule notification \(request.identifier): \(error)")
+        await withCheckedContinuation { continuation in
+            center.add(request) { error in
+                if let error {
+                    print("Failed to schedule notification \(request.identifier): \(error)")
+                }
+                continuation.resume()
+            }
         }
     }
 
@@ -80,15 +84,6 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     func removePending(withIdentifiers identifiers: [String]) async {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                didReceive response: UNNotificationResponse,
-                                withCompletionHandler completionHandler: @escaping () -> Void) {
-        Task {
-            await handle(response: response)
-            completionHandler()
-        }
     }
 
     private func handle(response: UNNotificationResponse) async {
@@ -124,6 +119,19 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             try context.save()
         } catch {
             print("Failed to log completion from notification: \(error)")
+        }
+    }
+}
+
+@MainActor
+extension NotificationService: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.handle(response: response)
+            completionHandler()
         }
     }
 }

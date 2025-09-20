@@ -6,17 +6,29 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var upcomingReminders: [SchedulingService.ReminderSummary] = []
     private weak var app: AppStartup?
     private var didConfigure = false
+    private var reminderTask: Task<Void, Never>?
 
-    func configureIfNeeded(app: AppStartup) async {
+    deinit {
+        reminderTask?.cancel()
+    }
+
+    func configureIfNeeded(app: AppStartup) {
         guard !didConfigure else { return }
         self.app = app
         didConfigure = true
-        await refreshUpcoming()
+        refreshUpcoming()
     }
 
-    func refreshUpcoming() async {
+    func refreshUpcoming() {
+        reminderTask?.cancel()
         guard let app else { return }
-        upcomingReminders = await app.schedulingService.upcomingReminderSummaries()
+        reminderTask = Task { [weak self] in
+            let summaries = await app.schedulingService.upcomingReminderSummaries()
+            guard let self, !Task.isCancelled else { return }
+            await MainActor.run {
+                self.upcomingReminders = summaries
+            }
+        }
     }
 
     func suggestedExercise(from exercises: [Exercise]) -> Exercise? {
@@ -46,7 +58,7 @@ final class HomeViewModel: ObservableObject {
                     print("Refresh schedule failed after quick completion: \(error)")
                 }
             }
-            await self.refreshUpcoming()
+            self.refreshUpcoming()
         }
     }
 }

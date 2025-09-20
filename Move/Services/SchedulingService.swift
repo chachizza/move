@@ -93,7 +93,7 @@ actor SchedulingService {
         let summaries = requests.compactMap { request -> ReminderSummary? in
             guard let fireDate = (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate(),
                   let exerciseIDString = request.content.userInfo[NotificationPayloadKey.exerciseID] as? String,
-                  let uuid = UUID(uuidString: exerciseIDString) else {
+                  UUID(uuidString: exerciseIDString) != nil else {
                 return nil
             }
             let name = request.content.title

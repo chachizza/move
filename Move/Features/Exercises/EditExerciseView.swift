@@ -38,7 +38,7 @@ struct EditExerciseView: View {
                 TextField("Emoji", text: $emoji)
                     .font(.system(size: 32))
                     .focused($focusedField, equals: .emoji)
-                    .onChange(of: emoji) { newValue in
+                    .onChange(of: emoji) { _, newValue in
                         emoji = String(newValue.prefix(2)).trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                 TextField("Name", text: $name)

@@ -41,20 +41,20 @@ struct HomeView: View {
             .tabItem { Label("Settings", systemImage: "gearshape") }
         }
         .task {
-            await viewModel.configureIfNeeded(app: app)
+            viewModel.configureIfNeeded(app: app)
         }
-        .onChange(of: exercises.map(\.id)) { _ in
-            Task { await viewModel.refreshUpcoming() }
+        .onChange(of: exercises.map(\.id)) { _, _ in
+            viewModel.refreshUpcoming()
         }
-        .onChange(of: completions.map(\.id)) { _ in
-            Task { await viewModel.refreshUpcoming() }
+        .onChange(of: completions.map(\.id)) { _, _ in
+            viewModel.refreshUpcoming()
         }
     }
 
     private var refreshButton: some ToolbarContent {
         ToolbarItem(placement: .navigationBarTrailing) {
             Button {
-                Task { await viewModel.refreshUpcoming() }
+                viewModel.refreshUpcoming()
             } label: {
                 Image(systemName: "arrow.clockwise")
             }

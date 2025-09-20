@@ -9,9 +9,27 @@ struct SettingsView: View {
     @State private var showingImporter = false
     @State private var showingResetConfirmation = false
     @State private var alertMessage: String?
+    @AppStorage(MoveTheme.Preference.storageKey) private var themePreferenceRawValue = MoveTheme.Preference.fallback.rawValue
+
+    private var themePreference: MoveTheme.Preference {
+        get { MoveTheme.Preference(rawValue: themePreferenceRawValue) ?? .fallback }
+        set { themePreferenceRawValue = newValue.rawValue }
+    }
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Color mode", selection: Binding(get: { themePreference }, set: { themePreferenceRawValue = $0.rawValue })) {
+                    ForEach(MoveTheme.Preference.allCases) { preference in
+                        Text(preference.displayName).tag(preference)
+                    }
+                }
+                .pickerStyle(.segmented)
+                Text("Pick the palette that fits your space. Black dominates Light Mode while Dark Mode brightens backgrounds for maximum contrast.")
+                    .font(.footnote)
+                    .foregroundStyle(MoveTheme.muted)
+            }
+
             Section("Notifications") {
                 HStack {
                     Label(viewModel.notificationsAuthorized ? "Notifications enabled" : "Notifications disabled",
@@ -50,6 +68,8 @@ struct SettingsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(MoveTheme.background.ignoresSafeArea())
         .navigationTitle("Settings")
         .task {
             await viewModel.configure(app: app)
@@ -70,7 +90,7 @@ struct SettingsView: View {
         }, message: {
             Text("This removes all exercises, schedules, and history, then restores the default seed data.")
         })
-        .onChange(of: viewModel.alertMessage) { newValue in
+        .onChange(of: viewModel.alertMessage) { _, newValue in
             alertMessage = newValue
         }
         .alert(alertMessage ?? "", isPresented: Binding(get: { alertMessage != nil }, set: { newValue in
