@@ -1,0 +1,47 @@
+import SwiftData
+import SwiftUI
+
+struct HistoryView: View {
+    @EnvironmentObject private var app: AppStartup
+    @Query(sort: \Completion.timestamp, order: .reverse) private var completions: [Completion]
+    @Query(sort: \Exercise.name) private var exercises: [Exercise]
+
+    private var exerciseLookup: [UUID: Exercise] {
+        Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, $0) })
+    }
+
+    var body: some View {
+        List {
+            Section("Summary") {
+                Label("Current streak: \(app.streakCalculator.streakCount(from: completions)) days", systemImage: "flame")
+                Label("Total completions: \(completions.count)", systemImage: "checkmark.circle")
+            }
+
+            let grouped = Dictionary(grouping: completions) { completion in
+                Calendar.current.startOfDay(for: completion.timestamp)
+            }
+            let sortedKeys = grouped.keys.sorted(by: >)
+            ForEach(sortedKeys, id: \.self) { day in
+                Section(day.formatted(date: .abbreviated, time: .omitted)) {
+                    ForEach(grouped[day] ?? [], id: \.id) { completion in
+                        HStack {
+                            if let exercise = exerciseLookup[completion.exerciseID] {
+                                Text(exercise.emoji)
+                                Text(exercise.name)
+                            } else {
+                                Text("🏃")
+                                Text("Exercise")
+                            }
+                            Spacer()
+                            Text(completion.timestamp.formatted(date: .omitted, time: .shortened))
+                                .foregroundStyle(MoveTheme.muted)
+                        }
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color("MoveBackground"))
+        .navigationTitle("History")
+    }
+}
