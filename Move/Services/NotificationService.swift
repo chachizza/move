@@ -1,6 +1,6 @@
 import Foundation
 import SwiftData
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// Wraps `UNUserNotificationCenter` to manage authorization, categories, and action handling.
 /// https://developer.apple.com/documentation/usernotifications/unusernotificationcenter
@@ -57,6 +57,8 @@ final class NotificationService: NSObject {
 
     func replacePendingRequests(with requests: [UNNotificationRequest]) async {
         center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        try? await center.setBadgeCount(0)
         guard !requests.isEmpty else { return }
         for request in requests {
             await add(request: request)
@@ -65,9 +67,10 @@ final class NotificationService: NSObject {
 
     func add(request: UNNotificationRequest) async {
         await withCheckedContinuation { continuation in
+            let identifier = request.identifier
             center.add(request) { error in
                 if let error {
-                    print("Failed to schedule notification \(request.identifier): \(error)")
+                    print("Failed to schedule notification \(identifier): \(error)")
                 }
                 continuation.resume()
             }
@@ -117,6 +120,7 @@ final class NotificationService: NSObject {
             let completion = Completion(exerciseID: exerciseID)
             context.insert(completion)
             try context.save()
+            try? await center.setBadgeCount(0)
         } catch {
             print("Failed to log completion from notification: \(error)")
         }

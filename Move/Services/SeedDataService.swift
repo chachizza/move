@@ -32,14 +32,10 @@ final class SeedDataService {
         context.autosaveEnabled = true
         let descriptor = FetchDescriptor<ScheduleSettings>()
         if let existing = try? context.fetch(descriptor), existing.isEmpty {
-            var morning = DateComponents()
-            morning.hour = 10
-            var afternoon = DateComponents()
-            afternoon.hour = 14
-            var late = DateComponents()
-            late.hour = 16
             let settings = ScheduleSettings(useFixedTimes: true,
-                                            fixedTimes: [morning, afternoon, late],
+                                            fixedSlots: [ScheduleSlot(hour: 10, minute: 0),
+                                                         ScheduleSlot(hour: 14, minute: 0),
+                                                         ScheduleSlot(hour: 16, minute: 0)],
                                             useRandomWindows: true,
                                             randomStartHour: 9,
                                             randomEndHour: 18,

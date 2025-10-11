@@ -31,14 +31,15 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    func suggestedExercise(from exercises: [Exercise]) -> Exercise? {
-        guard !exercises.isEmpty else { return nil }
+    func suggestedExercise(from exercises: [Exercise], completions: [Completion]) -> Exercise? {
         let active = exercises.filter { $0.isActive }
+        guard !active.isEmpty else { return nil }
         if let upcoming = upcomingReminders.first,
            let match = active.first(where: { $0.name == upcoming.exerciseName }) {
             return match
         }
-        return active.randomElement()
+        var rotation = SchedulingService.ExerciseRotation(exercises: active, completions: completions)
+        return rotation.next()
     }
 
     func completeNow(exercise: Exercise, context: ModelContext) {

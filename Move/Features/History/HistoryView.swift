@@ -12,9 +12,9 @@ struct HistoryView: View {
 
     var body: some View {
         List {
-            Section("Summary") {
-                Label("Current streak: \(app.streakCalculator.streakCount(from: completions)) days", systemImage: "flame")
-                Label("Total completions: \(completions.count)", systemImage: "checkmark.circle")
+            Section("SUMMARY") {
+                Label("CURRENT STREAK: \(app.streakCalculator.streakCount(from: completions)) DAYS", systemImage: "flame")
+                Label("TOTAL COMPLETIONS: \(completions.count)", systemImage: "checkmark.circle")
             }
 
             let grouped = Dictionary(grouping: completions) { completion in
@@ -22,7 +22,7 @@ struct HistoryView: View {
             }
             let sortedKeys = grouped.keys.sorted(by: >)
             ForEach(sortedKeys, id: \.self) { day in
-                Section(day.formatted(date: .abbreviated, time: .omitted)) {
+                Section(day.formatted(date: .abbreviated, time: .omitted).uppercased()) {
                     ForEach(grouped[day] ?? [], id: \.id) { completion in
                         HStack {
                             if let exercise = exerciseLookup[completion.exerciseID] {
@@ -40,8 +40,11 @@ struct HistoryView: View {
                 }
             }
         }
+        .listStyle(.insetGrouped)
+        .listRowBackground(MoveTheme.background)
         .scrollContentBackground(.hidden)
-        .background(Color("MoveBackground"))
-        .navigationTitle("History")
+        .background(MoveTheme.canvas.ignoresSafeArea())
+        .navigationTitle("HISTORY")
+        .tint(MoveTheme.primary)
     }
 }

@@ -5,6 +5,7 @@ struct ScheduleView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var app: AppStartup
     @Query private var settings: [ScheduleSettings]
+    @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @StateObject private var viewModel = ScheduleViewModel()
     @State private var isSaving = false
 
@@ -12,22 +13,31 @@ struct ScheduleView: View {
 
     var body: some View {
         Form {
-            Section("Fixed Times") {
+            Section("FIXED TIMES") {
                 Toggle("Use fixed reminder times", isOn: $viewModel.useFixedTimes)
                 if viewModel.useFixedTimes {
-                    ForEach(viewModel.fixedTimes.indices, id: \.self) { index in
-                        DatePicker("Time \(index + 1)", selection: binding(for: index), displayedComponents: .hourAndMinute)
+                    ForEach(viewModel.fixedSlots.indices, id: \.self) { index in
+                        VStack(alignment: .leading, spacing: 8) {
+                            DatePicker("Time \(index + 1)", selection: timeBinding(for: index), displayedComponents: .hourAndMinute)
+                            Picker("Exercise", selection: exerciseBinding(for: index)) {
+                                Text("Next in rotation").tag(nil as UUID?)
+                                ForEach(exercises.filter { $0.isActive }) { exercise in
+                                    Text(exercise.name).tag(Optional(exercise.id))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
                     }
                     .onDelete(perform: viewModel.removeFixedTime)
                     Button {
                         viewModel.addFixedTime()
                     } label: {
-                        Label("Add time", systemImage: "plus")
+                        Label("ADD TIME", systemImage: "plus")
                     }
                 }
             }
 
-            Section("Random Windows") {
+            Section("RANDOM WINDOWS") {
                 Toggle("Fill remaining slots with randomized windows", isOn: $viewModel.useRandomWindows)
                 if viewModel.useRandomWindows {
                     Stepper(value: $viewModel.randomStartHour, in: 5...22) {
@@ -42,7 +52,7 @@ struct ScheduleView: View {
                 }
             }
 
-            Section("Limits & Quiet Hours") {
+            Section("LIMITS & QUIET HOURS") {
                 Stepper(value: $viewModel.maxRemindersPerDay, in: 1...10) {
                     Label("Max per day: \(viewModel.maxRemindersPerDay)", systemImage: "number")
                 }
@@ -65,14 +75,18 @@ struct ScheduleView: View {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Label("Save schedule", systemImage: "checkmark")
+                        Label("SAVE SCHEDULE", systemImage: "checkmark")
                     }
                 }
                 .buttonStyle(.primary)
                 .disabled(isSaving)
             }
         }
-        .navigationTitle("Schedule")
+        .listRowBackground(MoveTheme.background)
+        .scrollContentBackground(.hidden)
+        .background(MoveTheme.canvas.ignoresSafeArea())
+        .navigationTitle("SCHEDULE")
+        .tint(MoveTheme.primary)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()
@@ -94,17 +108,26 @@ struct ScheduleView: View {
         }
     }
 
-    private func binding(for index: Int) -> Binding<Date> {
+    private func timeBinding(for index: Int) -> Binding<Date> {
         Binding { () -> Date in
-            guard index < viewModel.fixedTimes.count else { return Date() }
-            let components = viewModel.fixedTimes[index]
+            guard index < viewModel.fixedSlots.count else { return Date() }
+            let slot = viewModel.fixedSlots[index]
             let base = Date()
             var dateComponents = calendar.dateComponents([.year, .month, .day], from: base)
-            dateComponents.hour = components.hour ?? 10
-            dateComponents.minute = components.minute ?? 0
+            dateComponents.hour = slot.hour ?? 10
+            dateComponents.minute = slot.minute ?? 0
             return calendar.date(from: dateComponents) ?? base
         } set: { newDate in
             viewModel.updateFixedTime(at: index, to: newDate, calendar: calendar)
+        }
+    }
+
+    private func exerciseBinding(for index: Int) -> Binding<UUID?> {
+        Binding {
+            guard index < viewModel.fixedSlots.count else { return nil }
+            return viewModel.fixedSlots[index].exerciseID
+        } set: { newValue in
+            viewModel.updateExercise(at: index, to: newValue)
         }
     }
 

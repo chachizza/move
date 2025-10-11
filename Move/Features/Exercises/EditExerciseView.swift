@@ -6,15 +6,7 @@ struct EditExerciseView: View {
     @Environment(\.modelContext) private var modelContext
 
     let exercise: Exercise?
-
-    @State private var name: String
-    @State private var emoji: String
-    @State private var category: String
-    @State private var durationMinutes: Int
-    @State private var difficulty: Int
-    @State private var instructions: String
-    @State private var isActive: Bool
-
+    @StateObject private var viewModel: ViewModel
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -23,44 +15,38 @@ struct EditExerciseView: View {
 
     init(exercise: Exercise?) {
         self.exercise = exercise
-        _name = State(initialValue: exercise?.name ?? "")
-        _emoji = State(initialValue: exercise?.emoji ?? "💪")
-        _category = State(initialValue: exercise?.category ?? "General")
-        _durationMinutes = State(initialValue: exercise?.durationMinutes ?? 2)
-        _difficulty = State(initialValue: exercise?.difficulty ?? 1)
-        _instructions = State(initialValue: exercise?.instructions ?? "")
-        _isActive = State(initialValue: exercise?.isActive ?? true)
+        _viewModel = StateObject(wrappedValue: ViewModel(exercise: exercise))
     }
 
     var body: some View {
         Form {
-            Section("Basics") {
-                TextField("Emoji", text: $emoji)
+            Section("BASICS") {
+                TextField("Emoji", text: $viewModel.emoji)
                     .font(.system(size: 32))
                     .focused($focusedField, equals: .emoji)
-                    .onChange(of: emoji) { _, newValue in
-                        emoji = String(newValue.prefix(2)).trimmingCharacters(in: .whitespacesAndNewlines)
+                    .onChange(of: viewModel.emoji) { _, newValue in
+                        viewModel.emoji = String(newValue.prefix(2)).trimmingCharacters(in: .whitespacesAndNewlines)
                     }
-                TextField("Name", text: $name)
+                TextField("Name", text: $viewModel.name)
                     .focused($focusedField, equals: .name)
-                TextField("Category", text: $category)
+                TextField("Category", text: $viewModel.category)
             }
 
-            Section("Details") {
-                Stepper(value: $durationMinutes, in: 1...30, step: 1) {
-                    Label("Duration: \(durationMinutes) min", systemImage: "timer")
+            Section("DETAILS") {
+                Stepper(value: $viewModel.durationMinutes, in: 1...30, step: 1) {
+                    Label("Duration: \(viewModel.durationMinutes) min", systemImage: "timer")
                 }
-                Stepper(value: $difficulty, in: 1...5) {
-                    Label("Difficulty: \(difficulty)", systemImage: "flame")
+                Stepper(value: $viewModel.difficulty, in: 1...5) {
+                    Label("Difficulty: \(viewModel.difficulty)", systemImage: "flame")
                 }
-                Toggle("Active", isOn: $isActive)
+                Toggle("Active", isOn: $viewModel.isActive)
             }
 
-            Section("Instructions") {
-                TextEditor(text: $instructions)
+            Section("INSTRUCTIONS") {
+                TextEditor(text: $viewModel.instructions)
                     .frame(minHeight: 120)
                     .overlay(alignment: .topLeading) {
-                        if instructions.isEmpty {
+                        if viewModel.instructions.isEmpty {
                             Text("Optional cues or reminders")
                                 .foregroundStyle(MoveTheme.muted)
                                 .padding(.top, 8)
@@ -68,39 +54,43 @@ struct EditExerciseView: View {
                     }
             }
         }
-        .navigationTitle(exercise == nil ? "New Exercise" : "Edit Exercise")
+        .listRowBackground(MoveTheme.background)
+        .scrollContentBackground(.hidden)
+        .background(MoveTheme.canvas.ignoresSafeArea())
+        .navigationTitle(exercise == nil ? "NEW EXERCISE" : "EDIT EXERCISE")
         .navigationBarTitleDisplayMode(.inline)
+        .tint(MoveTheme.primary)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("CANCEL") { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save", action: save)
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("SAVE", action: save)
+                    .disabled(viewModel.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
     }
 
     private func save() {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedName = viewModel.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
 
         if let exercise {
             exercise.name = trimmedName
-            exercise.emoji = emoji
-            exercise.category = category
-            exercise.durationMinutes = durationMinutes
-            exercise.difficulty = difficulty
-            exercise.instructions = instructions.isEmpty ? nil : instructions
-            exercise.isActive = isActive
+            exercise.emoji = viewModel.emoji
+            exercise.category = viewModel.category
+            exercise.durationMinutes = viewModel.durationMinutes
+            exercise.difficulty = viewModel.difficulty
+            exercise.instructions = viewModel.instructions.isEmpty ? nil : viewModel.instructions
+            exercise.isActive = viewModel.isActive
         } else {
             let newExercise = Exercise(name: trimmedName,
-                                       emoji: emoji,
-                                       category: category,
-                                       durationMinutes: durationMinutes,
-                                       difficulty: difficulty,
-                                       instructions: instructions.isEmpty ? nil : instructions,
-                                       isActive: isActive)
+                                       emoji: viewModel.emoji,
+                                       category: viewModel.category,
+                                       durationMinutes: viewModel.durationMinutes,
+                                       difficulty: viewModel.difficulty,
+                                       instructions: viewModel.instructions.isEmpty ? nil : viewModel.instructions,
+                                       isActive: viewModel.isActive)
             modelContext.insert(newExercise)
         }
 
@@ -109,6 +99,29 @@ struct EditExerciseView: View {
             dismiss()
         } catch {
             print("Failed to save exercise: \(error)")
+        }
+    }
+}
+
+extension EditExerciseView {
+    @MainActor
+    final class ViewModel: ObservableObject {
+        @Published var name: String
+        @Published var emoji: String
+        @Published var category: String
+        @Published var durationMinutes: Int
+        @Published var difficulty: Int
+        @Published var instructions: String
+        @Published var isActive: Bool
+
+        init(exercise: Exercise?) {
+            self.name = exercise?.name ?? ""
+            self.emoji = exercise?.emoji ?? "💪"
+            self.category = exercise?.category ?? "General"
+            self.durationMinutes = exercise?.durationMinutes ?? 2
+            self.difficulty = exercise?.difficulty ?? 1
+            self.instructions = exercise?.instructions ?? ""
+            self.isActive = exercise?.isActive ?? true
         }
     }
 }

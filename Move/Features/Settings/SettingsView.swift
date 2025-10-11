@@ -18,7 +18,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Appearance") {
+            Section("APPEARANCE") {
                 Picker("Color mode", selection: Binding(get: { themePreference }, set: { themePreferenceRawValue = $0.rawValue })) {
                     ForEach(MoveTheme.Preference.allCases) { preference in
                         Text(preference.displayName).tag(preference)
@@ -30,7 +30,7 @@ struct SettingsView: View {
                     .foregroundStyle(MoveTheme.muted)
             }
 
-            Section("Notifications") {
+            Section("NOTIFICATIONS") {
                 HStack {
                     Label(viewModel.notificationsAuthorized ? "Notifications enabled" : "Notifications disabled",
                           systemImage: viewModel.notificationsAuthorized ? "bell.badge" : "bell.slash")
@@ -38,39 +38,41 @@ struct SettingsView: View {
                     Spacer()
                 }
                 Label("Scheduled reminders: \(viewModel.pendingReminderCount)", systemImage: "calendar.badge.clock")
-                Button("Request permission", action: requestNotifications)
-                Button("Schedule test reminder", action: scheduleTestReminder)
-                Button("Refresh reminder count") {
+                Button("REQUEST PERMISSION", action: requestNotifications)
+                Button("SCHEDULE TEST REMINDER", action: scheduleTestReminder)
+                Button("REFRESH REMINDER COUNT") {
                     Task { await viewModel.refreshPendingReminderCount() }
                 }
-                Button("Regenerate next 7 days") {
+                Button("REGENERATE NEXT 7 DAYS") {
                     Task { await viewModel.regenerateSchedule() }
                 }
             }
 
-            Section("Data") {
-                Button("Export data", action: exportData)
+            Section("DATA") {
+                Button("EXPORT DATA", action: exportData)
                 if let url = viewModel.lastExportURL {
                     ShareLink(item: url) {
                         Label("Share last export", systemImage: "square.and.arrow.up")
                     }
                 }
-                Button("Import data from file") {
+                Button("IMPORT DATA FROM FILE") {
                     showingImporter = true
                 }
             }
 
-            Section("Danger Zone") {
+            Section("DANGER ZONE") {
                 Button(role: .destructive) {
                     showingResetConfirmation = true
                 } label: {
-                    Label("Reset all data", systemImage: "trash")
+                    Label("RESET ALL DATA", systemImage: "trash")
                 }
             }
         }
+        .listRowBackground(MoveTheme.background)
         .scrollContentBackground(.hidden)
-        .background(MoveTheme.background.ignoresSafeArea())
-        .navigationTitle("Settings")
+        .background(MoveTheme.canvas.ignoresSafeArea())
+        .navigationTitle("SETTINGS")
+        .tint(MoveTheme.primary)
         .task {
             await viewModel.configure(app: app)
         }
