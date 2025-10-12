@@ -20,7 +20,7 @@ struct EditExerciseView: View {
 
     var body: some View {
         Form {
-            Section("BASICS") {
+            Section("Basics") {
                 TextField("Emoji", text: $viewModel.emoji)
                     .font(.system(size: 32))
                     .focused($focusedField, equals: .emoji)
@@ -32,7 +32,7 @@ struct EditExerciseView: View {
                 TextField("Category", text: $viewModel.category)
             }
 
-            Section("DETAILS") {
+            Section("Details") {
                 Stepper(value: $viewModel.durationMinutes, in: 1...30, step: 1) {
                     Label("Duration: \(viewModel.durationMinutes) min", systemImage: "timer")
                 }
@@ -42,7 +42,7 @@ struct EditExerciseView: View {
                 Toggle("Active", isOn: $viewModel.isActive)
             }
 
-            Section("INSTRUCTIONS") {
+            Section("Instructions") {
                 TextEditor(text: $viewModel.instructions)
                     .frame(minHeight: 120)
                     .overlay(alignment: .topLeading) {
@@ -57,15 +57,15 @@ struct EditExerciseView: View {
         .listRowBackground(MoveTheme.background)
         .scrollContentBackground(.hidden)
         .background(MoveTheme.canvas.ignoresSafeArea())
-        .navigationTitle(exercise == nil ? "NEW EXERCISE" : "EDIT EXERCISE")
+        .navigationTitle(exercise == nil ? "New Exercise" : "Edit Exercise")
         .navigationBarTitleDisplayMode(.inline)
         .tint(MoveTheme.primary)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("CANCEL") { dismiss() }
+                Button("Cancel") { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("SAVE", action: save)
+                Button("Save", action: save)
                     .disabled(viewModel.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

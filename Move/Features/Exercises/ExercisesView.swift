@@ -12,19 +12,19 @@ struct ExercisesView: View {
             VStack(spacing: 20) {
                 if exercises.isEmpty {
                     EmptyStateView(emoji: "🧘",
-                                   title: "No exercises yet",
+                                   title: "No Exercises Yet",
                                    message: "Add exercises with emojis, instructions, and durations to personalize reminders.")
                         .frame(maxWidth: .infinity)
                 } else {
-                    exerciseSection(title: "ACTIVE EXERCISES", items: exercises.filter { $0.isActive })
-                    exerciseSection(title: "INACTIVE EXERCISES", items: exercises.filter { !$0.isActive })
+                    exerciseSection(title: "Active Exercises", items: exercises.filter { $0.isActive })
+                    exerciseSection(title: "Inactive Exercises", items: exercises.filter { !$0.isActive })
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 24)
         }
         .background(MoveTheme.canvas.ignoresSafeArea())
-        .navigationTitle("EXERCISES")
+        .navigationTitle("Exercises")
         .tint(MoveTheme.primary)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -32,7 +32,7 @@ struct ExercisesView: View {
                     selectedExercise = nil
                     isPresentingEditor = true
                 } label: {
-                    Label("ADD EXERCISE", systemImage: "plus")
+                    Label("Add Exercise", systemImage: "plus")
                 }
             }
         }
@@ -59,7 +59,6 @@ private extension ExercisesView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(title)
                         .font(.headline)
-                        .tracking(1.2)
                     ForEach(items) { exercise in
                         ExerciseCard(exercise: exercise,
                                      onEdit: { selectedExercise = exercise; isPresentingEditor = true },
@@ -103,46 +102,45 @@ private struct ExerciseCard: View {
                     Text(exercise.emoji)
                         .font(.system(size: 44))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.name.uppercased())
+                        Text(exercise.name)
                             .font(.title3.weight(.heavy))
-                        Text("\(exercise.durationMinutes) MIN • DIFFICULTY \(exercise.difficulty)")
+                        Text("\(exercise.durationMinutes) min • Difficulty \(exercise.difficulty)")
                             .font(.caption)
                             .foregroundStyle(MoveTheme.muted)
                     }
                     Spacer()
-                    Text(exercise.isActive ? "ACTIVE" : "INACTIVE")
+                    Text(exercise.isActive ? "Active" : "Inactive")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(exercise.isActive ? MoveTheme.primary : Color.orange)
                 }
 
                 if let instructions = exercise.instructions, !instructions.isEmpty {
-                    Text(instructions.uppercased())
+                    Text(instructions)
                         .font(.caption)
                         .foregroundStyle(MoveTheme.muted)
                 }
 
                 VStack(spacing: 12) {
-                    Button("EDIT EXERCISE", action: onEdit)
+                    Button("Edit Exercise", action: onEdit)
                         .buttonStyle(.primary)
                     HStack(spacing: 12) {
-                        Button((exercise.isActive ? "DISABLE" : "ENABLE")) {
+                        Button(exercise.isActive ? "Disable" : "Enable") {
                             onToggle()
                         }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(MoveTheme.accent)
-                            .foregroundStyle(MoveTheme.background)
+                            .foregroundStyle(MoveTheme.text)
                             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                         Button(role: .destructive) {
                             onDelete()
                         } label: {
-                            Text("DELETE")
+                            Text("Delete")
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
-                                .textCase(.uppercase)
                         }
                         .background(MoveTheme.primary)
-                        .foregroundColor(MoveTheme.background)
+                        .foregroundColor(MoveTheme.text)
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                 }

@@ -14,7 +14,6 @@ struct HomeView: View {
                 HomeDashboardView(viewModel: viewModel,
                                    exercises: exercises,
                                    completions: completions)
-                    .navigationTitle("MOVE")
                     .toolbar { refreshButton }
             }
             .tabItem { Label("Home", systemImage: "bolt.heart") }
@@ -39,7 +38,7 @@ struct HomeView: View {
             }
             .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-        .tint(MoveTheme.primary)
+        .tint(MoveTheme.accent)
         .background(MoveTheme.canvas.ignoresSafeArea())
         .task {
             viewModel.configureIfNeeded(app: app)
@@ -88,19 +87,18 @@ private struct HomeDashboardView: View {
     private var nextReminderCard: some View {
         CardView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("NEXT REMINDER")
+                Text("Next Reminder")
                     .font(.headline)
-                    .tracking(1.2)
                 if let next = viewModel.upcomingReminders.sorted(by: { $0.fireDate < $1.fireDate }).first {
-                    Text("\(next.emoji) \(next.exerciseName.uppercased())")
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                    Text("\(next.emoji) \(next.exerciseName)")
+                        .font(.system(size: 32, weight: .heavy, design: .default))
                         .minimumScaleFactor(0.6)
-                    Text(next.fireDate.formatted(date: .abbreviated, time: .shortened).uppercased())
+                    Text(next.fireDate.formatted(date: .abbreviated, time: .shortened))
                         .font(.subheadline)
                         .foregroundStyle(MoveTheme.muted)
                 } else {
                     EmptyStateView(emoji: "🗓",
-                                   title: "No reminder",
+                                   title: "No Reminder",
                                    message: "Schedule settings determine what appears here.")
                 }
             }
@@ -111,13 +109,12 @@ private struct HomeDashboardView: View {
         CardView {
             let streak = app.streakCalculator.streakCount(from: completions)
             VStack(alignment: .leading, spacing: 12) {
-                Text("CURRENT STREAK")
+                Text("Current Streak")
                     .font(.headline)
-                    .tracking(1.2)
-                Text("\(streak) DAY\(streak == 1 ? "" : "S")")
-                    .font(.system(size: 48, weight: .black, design: .rounded))
+                Text("\(streak) Day\(streak == 1 ? "" : "s")")
+                    .font(.system(size: 48, weight: .black, design: .default))
                     .foregroundStyle(MoveTheme.primary)
-                Text(streak == 0 ? "START BUILDING YOUR MOMENTUM." : "KEEP THE MOMENTUM GOING TODAY.")
+                Text(streak == 0 ? "Start building your momentum." : "Keep the momentum going today.")
                     .font(.footnote)
                     .foregroundStyle(MoveTheme.muted)
             }
@@ -128,11 +125,10 @@ private struct HomeDashboardView: View {
         CardView {
             let active = exercises.filter { $0.isActive }
             VStack(alignment: .leading, spacing: 12) {
-                Text("ROTATION ORDER")
+                Text("Rotation Order")
                     .font(.headline)
-                    .tracking(1.2)
                 if active.isEmpty {
-                    Text("ACTIVATE EXERCISES TO BUILD YOUR ROUTINE.")
+                    Text("Activate exercises to build your routine.")
                         .font(.subheadline)
                         .foregroundStyle(MoveTheme.muted)
                 } else {
@@ -143,10 +139,10 @@ private struct HomeDashboardView: View {
                                 .font(.title2.weight(.bold))
                                 .foregroundStyle(MoveTheme.primary)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("\(exercise.emoji) \(exercise.name.uppercased())")
+                                Text("\(exercise.emoji) \(exercise.name)")
                                     .font(.subheadline.weight(.heavy))
                                 if let instructions = exercise.instructions, !instructions.isEmpty {
-                                    Text(instructions.uppercased())
+                                    Text(instructions)
                                         .font(.caption)
                                         .foregroundStyle(MoveTheme.muted)
                                 }
@@ -161,19 +157,18 @@ private struct HomeDashboardView: View {
     private var quickActionCard: some View {
         CardView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("QUICK ACTION")
+                Text("Quick Action")
                     .font(.headline)
-                    .tracking(1.2)
                 if let exercise = viewModel.suggestedExercise(from: exercises, completions: completions) {
                     Button {
                         viewModel.completeNow(exercise: exercise, context: modelContext)
                     } label: {
-                        Label("LOG \(exercise.name.uppercased())", systemImage: "checkmark.circle")
+                        Label("Log \(exercise.name)", systemImage: "checkmark.circle")
                             .font(.headline)
                     }
                     .buttonStyle(.primary)
                 } else {
-                    Text("ADD AN EXERCISE TO ENABLE QUICK LOGGING.")
+                    Text("Add an exercise to enable quick logging.")
                         .font(.subheadline)
                         .foregroundStyle(MoveTheme.muted)
                 }

@@ -71,14 +71,15 @@ actor SchedulingService {
         guard let exercise = exercises.first else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Time to move"
+        content.title = exercise.name
         content.body = "Try \(exercise.name)."
         content.sound = .default
         content.categoryIdentifier = "MOVE_REMINDER"
         content.userInfo = [
             NotificationPayloadKey.exerciseID: exercise.id.uuidString,
             NotificationPayloadKey.scheduledDate: isoFormatter.string(from: Date().addingTimeInterval(60)),
-            NotificationPayloadKey.requestID: "test-\(UUID().uuidString)"
+            NotificationPayloadKey.requestID: "test-\(UUID().uuidString)",
+            NotificationPayloadKey.exerciseEmoji: exercise.emoji
         ]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 60, repeats: false)
@@ -97,8 +98,19 @@ actor SchedulingService {
                 return nil
             }
             let name = request.content.title
-            let emoji = request.content.subtitle
-            return ReminderSummary(id: request.identifier, exerciseName: name.isEmpty ? "Exercise" : name, emoji: emoji, fireDate: fireDate)
+            let rawEmoji = request.content.userInfo[NotificationPayloadKey.exerciseEmoji] as? String ?? ""
+            let emoji: String
+            if !rawEmoji.isEmpty {
+                emoji = rawEmoji
+            } else if let scalar = name.first {
+                emoji = String(scalar)
+            } else {
+                emoji = "✨"
+            }
+            return ReminderSummary(id: request.identifier,
+                                   exerciseName: name.isEmpty ? "Exercise" : name,
+                                   emoji: emoji,
+                                   fireDate: fireDate)
         }
         return summaries.sorted(by: { $0.fireDate < $1.fireDate })
     }
@@ -133,15 +145,15 @@ actor SchedulingService {
 
     private func buildRequest(for reminder: PlannedReminder) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        content.title = "\(reminder.exercise.emoji) \(reminder.exercise.name)"
-        content.subtitle = "Move reminder ⚡️"
+        content.title = reminder.exercise.name
         content.body = [reminder.displayText, "Tap Done when finished or Snooze for 15 minutes."].joined(separator: "\n\n")
         content.sound = .default
         content.categoryIdentifier = "MOVE_REMINDER"
         content.userInfo = [
             NotificationPayloadKey.exerciseID: reminder.exercise.id.uuidString,
             NotificationPayloadKey.scheduledDate: isoFormatter.string(from: reminder.fireDate),
-            NotificationPayloadKey.requestID: reminder.id
+            NotificationPayloadKey.requestID: reminder.id,
+            NotificationPayloadKey.exerciseEmoji: reminder.exercise.emoji
         ]
 
         let triggerDate = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.fireDate)

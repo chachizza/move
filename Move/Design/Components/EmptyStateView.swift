@@ -18,10 +18,9 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 12) {
             Text(emoji).font(.system(size: 56))
-            Text(title.uppercased())
+            Text(title)
                 .font(.title3)
                 .fontWeight(.heavy)
-                .tracking(1.2)
             Text(message)
                 .font(.body)
                 .foregroundStyle(MoveTheme.muted)

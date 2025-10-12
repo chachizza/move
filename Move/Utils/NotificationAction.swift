@@ -18,4 +18,5 @@ enum NotificationPayloadKey {
     static let exerciseID = "exerciseID"
     static let scheduledDate = "scheduledDate"
     static let requestID = "requestID"
+    static let exerciseEmoji = "exerciseEmoji"
 }

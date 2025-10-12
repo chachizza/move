@@ -4,12 +4,11 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .textCase(.uppercase)
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .background(MoveTheme.primary)
-            .foregroundColor(MoveTheme.background)
+            .foregroundColor(MoveTheme.text)
             .overlay(
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .stroke(MoveTheme.canvas, lineWidth: 3)

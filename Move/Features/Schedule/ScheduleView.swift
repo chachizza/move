@@ -12,47 +12,121 @@ struct ScheduleView: View {
     private let calendar = Calendar.current
 
     var body: some View {
-        Form {
-            Section("FIXED TIMES") {
+        ScrollView {
+            VStack(spacing: 20) {
+                fixedTimesCard
+                randomWindowsCard
+                limitsCard
+                actionsCard
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 24)
+        }
+        .background(MoveTheme.canvas.ignoresSafeArea())
+        .navigationTitle("Schedule")
+        .tint(MoveTheme.primary)
+        .onAppear {
+            viewModel.configure(with: settings.first)
+        }
+        .onChange(of: viewModel.randomStartHour) { _, newValue in
+            if newValue >= viewModel.randomEndHour {
+                viewModel.randomEndHour = min(newValue + 1, 23)
+            }
+        }
+        .onChange(of: viewModel.randomEndHour) { _, newValue in
+            if newValue <= viewModel.randomStartHour {
+                viewModel.randomStartHour = max(newValue - 1, 0)
+            }
+        }
+    }
+
+    private var fixedTimesCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Fixed Times")
+                    .font(.headline)
+                    .tracking(1.2)
                 Toggle("Use fixed reminder times", isOn: $viewModel.useFixedTimes)
+                    .tint(MoveTheme.primary)
+
                 if viewModel.useFixedTimes {
-                    ForEach(viewModel.fixedSlots.indices, id: \.self) { index in
-                        VStack(alignment: .leading, spacing: 8) {
-                            DatePicker("Time \(index + 1)", selection: timeBinding(for: index), displayedComponents: .hourAndMinute)
-                            Picker("Exercise", selection: exerciseBinding(for: index)) {
-                                Text("Next in rotation").tag(nil as UUID?)
-                                ForEach(exercises.filter { $0.isActive }) { exercise in
-                                    Text(exercise.name).tag(Optional(exercise.id))
+                    VStack(alignment: .leading, spacing: 16) {
+                        ForEach(viewModel.fixedSlots.indices, id: \.self) { index in
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    let slotLabel = String(format: "%02d", index + 1)
+                                    Text("Slot \(slotLabel)")
+                                        .font(.subheadline.weight(.heavy))
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        viewModel.removeFixedTime(at: IndexSet(integer: index))
+                                    } label: {
+                                        Label("Remove", systemImage: "trash")
+                                            .labelStyle(.titleAndIcon)
+                                            .font(.caption.bold())
+                                    }
                                 }
+                                DatePicker("Time", selection: timeBinding(for: index), displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                                    .datePickerStyle(.compact)
+                                Picker("Exercise", selection: exerciseBinding(for: index)) {
+                                    Text("Next in rotation").tag(nil as UUID?)
+                                    ForEach(exercises.filter { $0.isActive }) { exercise in
+                                        Text(exercise.name).tag(Optional(exercise.id))
+                                    }
+                                }
+                                .pickerStyle(.menu)
                             }
-                            .pickerStyle(.menu)
+                            if index != viewModel.fixedSlots.indices.last {
+                                Divider()
+                                    .overlay(MoveTheme.canvas)
+                            }
                         }
-                    }
-                    .onDelete(perform: viewModel.removeFixedTime)
-                    Button {
-                        viewModel.addFixedTime()
-                    } label: {
-                        Label("ADD TIME", systemImage: "plus")
+
+                        Button {
+                            viewModel.addFixedTime()
+                        } label: {
+                            Label("Add Another Time", systemImage: "plus")
+                                .font(.headline)
+                        }
+                        .buttonStyle(.primary)
                     }
                 }
             }
+        }
+    }
 
-            Section("RANDOM WINDOWS") {
+    private var randomWindowsCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Random Windows")
+                    .font(.headline)
+                    .tracking(1.2)
                 Toggle("Fill remaining slots with randomized windows", isOn: $viewModel.useRandomWindows)
+                    .tint(MoveTheme.primary)
                 if viewModel.useRandomWindows {
-                    Stepper(value: $viewModel.randomStartHour, in: 5...22) {
-                        Label("Start hour: \(formattedHour(viewModel.randomStartHour))", systemImage: "sunrise")
+                    VStack(alignment: .leading, spacing: 12) {
+                        Stepper(value: $viewModel.randomStartHour, in: 5...22) {
+                            Label("Start hour: \(formattedHour(viewModel.randomStartHour))", systemImage: "sunrise")
+                        }
+                        Stepper(value: $viewModel.randomEndHour, in: 6...23) {
+                            Label("End hour: \(formattedHour(viewModel.randomEndHour))", systemImage: "sunset")
+                        }
+                        Text("Randomized reminders respect quiet hours and spacing requirements.")
+                            .font(.footnote)
+                            .foregroundStyle(MoveTheme.muted)
                     }
-                    Stepper(value: $viewModel.randomEndHour, in: 6...23) {
-                        Label("End hour: \(formattedHour(viewModel.randomEndHour))", systemImage: "sunset")
-                    }
-                    Text("Randomized reminders respect quiet hours and spacing requirements.")
-                        .font(.footnote)
-                        .foregroundStyle(MoveTheme.muted)
                 }
             }
+        }
+    }
 
-            Section("LIMITS & QUIET HOURS") {
+    private var limitsCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Limits & Quiet Hours")
+                    .font(.headline)
+                    .tracking(1.2)
                 Stepper(value: $viewModel.maxRemindersPerDay, in: 1...10) {
                     Label("Max per day: \(viewModel.maxRemindersPerDay)", systemImage: "number")
                 }
@@ -66,44 +140,31 @@ struct ScheduleView: View {
                     Label("Quiet hours end: \(formattedHour(viewModel.quietEndHour))", systemImage: "sun.max")
                 }
                 Toggle("Skip weekends", isOn: $viewModel.skipWeekends)
+                    .tint(MoveTheme.primary)
             }
+        }
+    }
 
-            Section {
+    private var actionsCard: some View {
+        CardView {
+            VStack(spacing: 12) {
                 Button {
                     save()
                 } label: {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Label("SAVE SCHEDULE", systemImage: "checkmark")
+                        Label("Save Schedule", systemImage: "checkmark")
+                            .font(.headline)
                     }
                 }
                 .buttonStyle(.primary)
                 .disabled(isSaving)
-            }
-        }
-        .listRowBackground(MoveTheme.background)
-        .scrollContentBackground(.hidden)
-        .background(MoveTheme.canvas.ignoresSafeArea())
-        .navigationTitle("SCHEDULE")
-        .tint(MoveTheme.primary)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                EditButton()
-                    .disabled(!viewModel.useFixedTimes)
-            }
-        }
-        .onAppear {
-            viewModel.configure(with: settings.first)
-        }
-        .onChange(of: viewModel.randomStartHour) { _, newValue in
-            if newValue >= viewModel.randomEndHour {
-                viewModel.randomEndHour = min(newValue + 1, 23)
-            }
-        }
-        .onChange(of: viewModel.randomEndHour) { _, newValue in
-            if newValue <= viewModel.randomStartHour {
-                viewModel.randomStartHour = max(newValue - 1, 0)
+
+                Text("Saving regenerates the next seven days using the latest settings.")
+                    .font(.footnote)
+                    .foregroundStyle(MoveTheme.muted)
+                    .multilineTextAlignment(.center)
             }
         }
     }
