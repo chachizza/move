@@ -35,7 +35,7 @@ final class HomeViewModel: ObservableObject {
         let active = exercises.filter { $0.isActive }
         guard !active.isEmpty else { return nil }
         if let upcoming = upcomingReminders.first,
-           let match = active.first(where: { $0.name == upcoming.exerciseName }) {
+           let match = active.first(where: { $0.id == upcoming.exerciseID }) {
             return match
         }
         var rotation = SchedulingService.ExerciseRotation(exercises: active, completions: completions)

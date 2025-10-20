@@ -14,6 +14,7 @@ actor SchedulingService {
 
     struct ReminderSummary: Identifiable, Equatable {
         let id: String
+        let exerciseID: UUID
         let exerciseName: String
         let emoji: String
         let fireDate: Date
@@ -94,7 +95,7 @@ actor SchedulingService {
         let summaries = requests.compactMap { request -> ReminderSummary? in
             guard let fireDate = (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate(),
                   let exerciseIDString = request.content.userInfo[NotificationPayloadKey.exerciseID] as? String,
-                  UUID(uuidString: exerciseIDString) != nil else {
+                  let exerciseID = UUID(uuidString: exerciseIDString) else {
                 return nil
             }
             let name = request.content.title
@@ -108,6 +109,7 @@ actor SchedulingService {
                 emoji = "✨"
             }
             return ReminderSummary(id: request.identifier,
+                                   exerciseID: exerciseID,
                                    exerciseName: name.isEmpty ? "Exercise" : name,
                                    emoji: emoji,
                                    fireDate: fireDate)
