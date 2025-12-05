@@ -14,6 +14,7 @@ actor SchedulingService {
 
     struct ReminderSummary: Identifiable, Equatable {
         let id: String
+        let exerciseID: UUID
         let exerciseName: String
         let emoji: String
         let fireDate: Date
@@ -71,14 +72,15 @@ actor SchedulingService {
         guard let exercise = exercises.first else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Time to move"
+        content.title = exercise.name
         content.body = "Try \(exercise.name)."
         content.sound = .default
-        content.categoryIdentifier = "MOVE_REMINDER"
+        content.categoryIdentifier = Constants.Notifications.categoryIdentifier
         content.userInfo = [
-            NotificationPayloadKey.exerciseID: exercise.id.uuidString,
-            NotificationPayloadKey.scheduledDate: isoFormatter.string(from: Date().addingTimeInterval(60)),
-            NotificationPayloadKey.requestID: "test-\(UUID().uuidString)"
+            Constants.Notifications.PayloadKeys.exerciseID: exercise.id.uuidString,
+            Constants.Notifications.PayloadKeys.scheduledDate: isoFormatter.string(from: Date().addingTimeInterval(60)),
+            Constants.Notifications.PayloadKeys.requestID: "test-\(UUID().uuidString)",
+            Constants.Notifications.PayloadKeys.exerciseEmoji: exercise.emoji
         ]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 60, repeats: false)
@@ -92,13 +94,25 @@ actor SchedulingService {
         let requests = await notificationService.pendingRequests()
         let summaries = requests.compactMap { request -> ReminderSummary? in
             guard let fireDate = (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate(),
-                  let exerciseIDString = request.content.userInfo[NotificationPayloadKey.exerciseID] as? String,
-                  let uuid = UUID(uuidString: exerciseIDString) else {
+                  let exerciseIDString = request.content.userInfo[Constants.Notifications.PayloadKeys.exerciseID] as? String,
+                  let exerciseID = UUID(uuidString: exerciseIDString) else {
                 return nil
             }
             let name = request.content.title
-            let emoji = request.content.subtitle
-            return ReminderSummary(id: request.identifier, exerciseName: name.isEmpty ? "Exercise" : name, emoji: emoji, fireDate: fireDate)
+            let rawEmoji = request.content.userInfo[Constants.Notifications.PayloadKeys.exerciseEmoji] as? String ?? ""
+            let emoji: String
+            if !rawEmoji.isEmpty {
+                emoji = rawEmoji
+            } else if let scalar = name.first {
+                emoji = String(scalar)
+            } else {
+                emoji = "✨"
+            }
+            return ReminderSummary(id: request.identifier,
+                                   exerciseID: exerciseID,
+                                   exerciseName: name.isEmpty ? "Exercise" : name,
+                                   emoji: emoji,
+                                   fireDate: fireDate)
         }
         return summaries.sorted(by: { $0.fireDate < $1.fireDate })
     }
@@ -133,16 +147,15 @@ actor SchedulingService {
 
     private func buildRequest(for reminder: PlannedReminder) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        content.title = "\(reminder.exercise.emoji) \(reminder.exercise.name)"
-        content.subtitle = "Move reminder ⚡️"
+        content.title = reminder.exercise.name
         content.body = [reminder.displayText, "Tap Done when finished or Snooze for 15 minutes."].joined(separator: "\n\n")
         content.sound = .default
-        content.badge = NSNumber(value: 1)
-        content.categoryIdentifier = "MOVE_REMINDER"
+        content.categoryIdentifier = Constants.Notifications.categoryIdentifier
         content.userInfo = [
-            NotificationPayloadKey.exerciseID: reminder.exercise.id.uuidString,
-            NotificationPayloadKey.scheduledDate: isoFormatter.string(from: reminder.fireDate),
-            NotificationPayloadKey.requestID: reminder.id
+            Constants.Notifications.PayloadKeys.exerciseID: reminder.exercise.id.uuidString,
+            Constants.Notifications.PayloadKeys.scheduledDate: isoFormatter.string(from: reminder.fireDate),
+            Constants.Notifications.PayloadKeys.requestID: reminder.id,
+            Constants.Notifications.PayloadKeys.exerciseEmoji: reminder.exercise.emoji
         ]
 
         let triggerDate = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.fireDate)
@@ -197,22 +210,27 @@ extension SchedulingService {
                 guard let day = calendar.date(byAdding: .day, value: dayOffset, to: startOfToday) else { continue }
                 if settings.skipWeekends, calendar.isDateInWeekend(day) { continue }
 
-                var slots = fixedSlots(for: day)
-                slots = slots.filter { isValid(time: $0) }
+                var slots: [PlannedSlot] = settings.useFixedTimes ? fixedSlots(for: day) : []
+                slots = slots.filter { isValid(time: $0.date) }
 
                 if settings.useRandomWindows {
                     let additional = randomSlots(for: day, existing: slots, maxCount: maxPerDay)
                     slots.append(contentsOf: additional)
                 }
 
-                slots = sanitize(times: slots, maxPerDay: maxPerDay)
+                slots = sanitize(slots: slots, maxPerDay: maxPerDay)
 
-                for time in slots {
-                    guard time > now else { continue }
-                    let exercise = rotation.next()
-                    let reminder = PlannedReminder(id: "\(exercise.id.uuidString)-\(identifierFormatter.string(from: time))",
+                for slot in slots {
+                    guard slot.date > now else { continue }
+                    let exercise: Exercise
+                    if let override = slot.exercise {
+                        exercise = rotation.useSpecific(override)
+                    } else {
+                        exercise = rotation.next()
+                    }
+                    let reminder = PlannedReminder(id: "\(exercise.id.uuidString)-\(identifierFormatter.string(from: slot.date))",
                                                    exercise: exercise,
-                                                   fireDate: time,
+                                                   fireDate: slot.date,
                                                    displayText: reminderBody(for: exercise))
                     results.append(reminder)
                 }
@@ -227,25 +245,31 @@ extension SchedulingService {
             return "You scheduled \(exercise.name)."
         }
 
-        private func fixedSlots(for day: Date) -> [Date] {
-            let components = settings.fixedTimes
-            let slots: [Date] = components.compactMap { component in
-                var dateComponents = component
-                dateComponents.year = calendar.component(.year, from: day)
-                dateComponents.month = calendar.component(.month, from: day)
-                dateComponents.day = calendar.component(.day, from: day)
-                if dateComponents.hour == nil {
-                    dateComponents.hour = 9 // Assumption: fallback to 9 AM when hour missing.
-                }
-                if dateComponents.minute == nil {
-                    dateComponents.minute = 0
-                }
-                return calendar.date(from: dateComponents)
+        private func date(for slot: ScheduleSlot, on day: Date) -> Date? {
+            var components = slot.asDateComponents()
+            components.year = calendar.component(.year, from: day)
+            components.month = calendar.component(.month, from: day)
+            components.day = calendar.component(.day, from: day)
+            if components.hour == nil {
+                components.hour = 9
             }
-            return slots
+            if components.minute == nil {
+                components.minute = 0
+            }
+            return calendar.date(from: components)
         }
 
-        private func randomSlots(for day: Date, existing: [Date], maxCount: Int) -> [Date] {
+        private func fixedSlots(for day: Date) -> [PlannedSlot] {
+            settings.fixedSlots.compactMap { slot in
+                guard let date = date(for: slot, on: day) else { return nil }
+                let exercise = slot.exerciseID.flatMap { id in
+                    exercises.first(where: { $0.id == id })
+                }
+                return PlannedSlot(date: date, exercise: exercise)
+            }
+        }
+
+        private func randomSlots(for day: Date, existing: [PlannedSlot], maxCount: Int) -> [PlannedSlot] {
             let remaining = max(0, maxCount - existing.count)
             guard remaining > 0 else { return [] }
             let startHour = settings.randomStartHour
@@ -255,7 +279,7 @@ extension SchedulingService {
                 return []
             }
 
-            var generated: [Date] = []
+            var generated: [PlannedSlot] = []
             let attemptsCeiling = remaining * 20
             var attempts = 0
             while generated.count < remaining && attempts < attemptsCeiling {
@@ -266,25 +290,25 @@ extension SchedulingService {
                     continue
                 }
                 if !isValid(time: candidate) { continue }
-                var proposed = existing
-                proposed.append(contentsOf: generated)
+                var proposed = existing.map(\.date)
+                proposed.append(contentsOf: generated.map(\.date))
                 proposed.append(candidate)
                 if satisfiesSpacing(times: proposed) {
-                    generated.append(candidate)
+                    generated.append(PlannedSlot(date: candidate, exercise: nil))
                 }
             }
             return generated
         }
 
-        private func sanitize(times: [Date], maxPerDay: Int) -> [Date] {
-            let ordered = times.sorted()
-            var filtered: [Date] = []
-            for time in ordered {
-                if filtered.contains(where: { abs($0.timeIntervalSince(time)) < 1 }) {
+        private func sanitize(slots: [PlannedSlot], maxPerDay: Int) -> [PlannedSlot] {
+            let ordered = slots.sorted(by: { $0.date < $1.date })
+            var filtered: [PlannedSlot] = []
+            for slot in ordered {
+                if filtered.contains(where: { abs($0.date.timeIntervalSince(slot.date)) < 1 }) {
                     continue
                 }
-                if filtered.isEmpty || time.timeIntervalSince(filtered.last!) >= Double(settings.minSpacingMinutes * 60) {
-                    filtered.append(time)
+                if filtered.isEmpty || slot.date.timeIntervalSince(filtered.last!.date) >= Double(settings.minSpacingMinutes * 60) {
+                    filtered.append(slot)
                 }
             }
             return Array(filtered.prefix(maxPerDay))
@@ -319,10 +343,14 @@ extension SchedulingService {
         }
     }
 
+        struct PlannedSlot {
+            let date: Date
+            let exercise: Exercise?
+        }
+
     struct ExerciseRotation {
         private var queue: [Exercise]
         private let ordered: [Exercise]
-        private var index = 0
 
         init(exercises: [Exercise], completions: [Completion]) {
             let lastCompletion: [UUID: Date] = completions.reduce(into: [:]) { dict, completion in
@@ -349,6 +377,16 @@ extension SchedulingService {
                 return ordered.first!
             }
             return queue.removeFirst()
+        }
+
+        mutating func useSpecific(_ exercise: Exercise) -> Exercise {
+            if queue.isEmpty {
+                queue = ordered
+            }
+            if let matchIndex = queue.firstIndex(where: { $0.id == exercise.id }) {
+                queue.remove(at: matchIndex)
+            }
+            return exercise
         }
     }
 }

@@ -4,7 +4,7 @@ import SwiftData
 @Model
 final class ScheduleSettings {
     var useFixedTimes: Bool
-    var fixedTimes: [DateComponents]
+    private var fixedSlotsData: Data
     var useRandomWindows: Bool
     var randomStartHour: Int
     var randomEndHour: Int
@@ -16,7 +16,7 @@ final class ScheduleSettings {
 
     init(
         useFixedTimes: Bool = true,
-        fixedTimes: [DateComponents] = [],
+        fixedSlots: [ScheduleSlot] = [],
         useRandomWindows: Bool = false,
         randomStartHour: Int = 9,
         randomEndHour: Int = 17,
@@ -27,7 +27,7 @@ final class ScheduleSettings {
         skipWeekends: Bool = false
     ) {
         self.useFixedTimes = useFixedTimes
-        self.fixedTimes = fixedTimes
+        self.fixedSlotsData = Self.encode(slots: fixedSlots)
         self.useRandomWindows = useRandomWindows
         self.randomStartHour = randomStartHour
         self.randomEndHour = randomEndHour
@@ -36,5 +36,47 @@ final class ScheduleSettings {
         self.quietStartHour = quietStartHour
         self.quietEndHour = quietEndHour
         self.skipWeekends = skipWeekends
+    }
+
+    var fixedSlots: [ScheduleSlot] {
+        get { Self.decode(data: fixedSlotsData) }
+        set { fixedSlotsData = Self.encode(slots: newValue) }
+    }
+
+    private static func encode(slots: [ScheduleSlot]) -> Data {
+        guard !slots.isEmpty else { return Data() }
+        let encoder = JSONEncoder()
+        return (try? encoder.encode(slots)) ?? Data()
+    }
+
+    private static func decode(data: Data) -> [ScheduleSlot] {
+        guard !data.isEmpty else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([ScheduleSlot].self, from: data)) ?? []
+    }
+}
+
+struct ScheduleSlot: Codable, Hashable {
+    var hour: Int?
+    var minute: Int?
+    var exerciseID: UUID?
+
+    init(hour: Int? = nil, minute: Int? = nil, exerciseID: UUID? = nil) {
+        self.hour = hour
+        self.minute = minute
+        self.exerciseID = exerciseID
+    }
+
+    init(components: DateComponents, exerciseID: UUID? = nil) {
+        self.hour = components.hour
+        self.minute = components.minute
+        self.exerciseID = exerciseID
+    }
+
+    func asDateComponents(defaultHour: Int = 9) -> DateComponents {
+        var components = DateComponents()
+        components.hour = hour ?? defaultHour
+        components.minute = minute ?? 0
+        return components
     }
 }

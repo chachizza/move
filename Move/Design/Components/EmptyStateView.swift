@@ -20,7 +20,7 @@ struct EmptyStateView: View {
             Text(emoji).font(.system(size: 56))
             Text(title)
                 .font(.title3)
-                .bold()
+                .fontWeight(.heavy)
             Text(message)
                 .font(.body)
                 .foregroundStyle(MoveTheme.muted)

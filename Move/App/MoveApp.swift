@@ -10,6 +10,8 @@ struct MoveApp: App {
             HomeView()
                 .environmentObject(appStartup)
                 .modelContainer(appStartup.container)
+                .preferredColorScheme(.dark)
+                .uppercaseTextEnvironment()
                 .task {
                     await appStartup.configureIfNeeded()
                 }

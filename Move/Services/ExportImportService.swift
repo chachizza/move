@@ -92,7 +92,7 @@ private struct ExerciseDTO: Codable {
 
 private struct ScheduleSettingsDTO: Codable {
     let useFixedTimes: Bool
-    let fixedTimes: [DateComponents]
+    let fixedSlots: [ScheduleSlotDTO]
     let useRandomWindows: Bool
     let randomStartHour: Int
     let randomEndHour: Int
@@ -104,7 +104,7 @@ private struct ScheduleSettingsDTO: Codable {
 
     init(settings: ScheduleSettings) {
         useFixedTimes = settings.useFixedTimes
-        fixedTimes = settings.fixedTimes
+        fixedSlots = settings.fixedSlots.map(ScheduleSlotDTO.init)
         useRandomWindows = settings.useRandomWindows
         randomStartHour = settings.randomStartHour
         randomEndHour = settings.randomEndHour
@@ -117,7 +117,7 @@ private struct ScheduleSettingsDTO: Codable {
 
     var model: ScheduleSettings {
         ScheduleSettings(useFixedTimes: useFixedTimes,
-                         fixedTimes: fixedTimes,
+                         fixedSlots: fixedSlots.map { $0.model },
                          useRandomWindows: useRandomWindows,
                          randomStartHour: randomStartHour,
                          randomEndHour: randomEndHour,
@@ -126,6 +126,22 @@ private struct ScheduleSettingsDTO: Codable {
                          quietStartHour: quietStartHour,
                          quietEndHour: quietEndHour,
                          skipWeekends: skipWeekends)
+    }
+}
+
+private struct ScheduleSlotDTO: Codable {
+    let hour: Int?
+    let minute: Int?
+    let exerciseID: UUID?
+
+    init(slot: ScheduleSlot) {
+        hour = slot.hour
+        minute = slot.minute
+        exerciseID = slot.exerciseID
+    }
+
+    var model: ScheduleSlot {
+        ScheduleSlot(hour: hour, minute: minute, exerciseID: exerciseID)
     }
 }
 

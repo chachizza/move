@@ -19,11 +19,7 @@ final class AppStartup: ObservableObject {
     private var hasConfigured = false
 
     init() {
-        do {
-            container = try ModelContainer(for: Exercise.self, ScheduleSettings.self, Completion.self)
-        } catch {
-            fatalError("Failed to create SwiftData container: \(error)")
-        }
+        container = Self.makeContainer()
 
         let notificationService = NotificationService(container: container)
         let schedulingService = SchedulingService(container: container, notificationService: notificationService)
@@ -40,17 +36,25 @@ final class AppStartup: ObservableObject {
         guard !hasConfigured else { return }
         hasConfigured = true
 
-        await seedDataService.preloadExercisesIfNeeded()
-        await seedDataService.ensureScheduleDefaults()
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { [seedDataService] in
+                await seedDataService.preloadExercisesIfNeeded()
+            }
+            group.addTask { [seedDataService] in
+                await seedDataService.ensureScheduleDefaults()
+            }
+        }
         notificationService.registerCategories()
         await refreshNotificationAuthorizationState()
 
-        do {
-            try await schedulingService.refreshSchedule()
-        } catch {
-            print("Scheduling error during bootstrap: \(error)")
+        Task(priority: .background) { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.schedulingService.refreshSchedule()
+            } catch {
+                print("Scheduling error during bootstrap: \(error)")
+            }
         }
-
         configurationCompleted = true
     }
 
@@ -72,6 +76,42 @@ final class AppStartup: ObservableObject {
             try await schedulingService.scheduleTestReminder()
         } catch {
             print("Test reminder scheduling failed: \(error)")
+        }
+    }
+
+    private static func makeContainer() -> ModelContainer {
+        do {
+            return try ModelContainer(for: Exercise.self, ScheduleSettings.self, Completion.self)
+        } catch {
+            print("SwiftData container creation failed: \(error). Attempting to reset store and retry.")
+            resetPersistentStore()
+            do {
+                return try ModelContainer(for: Exercise.self, ScheduleSettings.self, Completion.self)
+            } catch {
+                fatalError("Failed to create SwiftData container after reset: \(error)")
+            }
+        }
+    }
+
+    private static func resetPersistentStore() {
+        guard let supportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+
+        let fileManager = FileManager.default
+        let base = supportURL.appendingPathComponent("default.store")
+        let candidates = [base,
+                          supportURL.appendingPathComponent("default.store-wal"),
+                          supportURL.appendingPathComponent("default.store-shm")]
+
+        for url in candidates {
+            do {
+                if fileManager.fileExists(atPath: url.path) {
+                    try fileManager.removeItem(at: url)
+                }
+            } catch {
+                print("Failed to remove stale store file at \(url): \(error)")
+            }
         }
     }
 }

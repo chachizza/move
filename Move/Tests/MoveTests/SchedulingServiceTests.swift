@@ -6,7 +6,7 @@ final class SchedulingServiceTests: XCTestCase {
 
     func testFixedTimesHonored() throws {
         let settings = ScheduleSettings(useFixedTimes: true,
-                                        fixedTimes: [components(hour: 9), components(hour: 13), components(hour: 17)],
+                                        fixedSlots: [slot(hour: 9), slot(hour: 13), slot(hour: 17)],
                                         useRandomWindows: false,
                                         randomStartHour: 9,
                                         randomEndHour: 18,
@@ -28,10 +28,10 @@ final class SchedulingServiceTests: XCTestCase {
     }
 
     func testMinSpacingApplied() throws {
-        var componentsList = [components(hour: 9), components(hour: 10), components(hour: 11)]
-        componentsList.append(components(hour: 12))
+        var slotList = [slot(hour: 9), slot(hour: 10), slot(hour: 11)]
+        slotList.append(slot(hour: 12))
         let settings = ScheduleSettings(useFixedTimes: true,
-                                        fixedTimes: componentsList,
+                                        fixedSlots: slotList,
                                         useRandomWindows: false,
                                         randomStartHour: 9,
                                         randomEndHour: 12,
@@ -57,7 +57,7 @@ final class SchedulingServiceTests: XCTestCase {
         let completions = [Completion(exerciseID: exercises[0].id, timestamp: referenceDate().addingTimeInterval(-86400 * 3)),
                            Completion(exerciseID: exercises[1].id, timestamp: referenceDate().addingTimeInterval(-86400))]
         let settings = ScheduleSettings(useFixedTimes: true,
-                                        fixedTimes: [components(hour: 9), components(hour: 10), components(hour: 11)],
+                                        fixedSlots: [slot(hour: 9), slot(hour: 10), slot(hour: 11)],
                                         useRandomWindows: false,
                                         randomStartHour: 9,
                                         randomEndHour: 18,
@@ -77,11 +77,30 @@ final class SchedulingServiceTests: XCTestCase {
         XCTAssertEqual(plan.first?.exercise.id, exercises[2].id)
     }
 
-    private func components(hour: Int, minute: Int = 0) -> DateComponents {
-        var components = DateComponents()
-        components.hour = hour
-        components.minute = minute
-        return components
+    func testFixedSlotRespectsChosenExercise() {
+        let exercises = sampleExercises(count: 3)
+        let customSlotExercise = exercises[1]
+        let settings = ScheduleSettings(useFixedTimes: true,
+                                        fixedSlots: [slot(hour: 9, exerciseID: customSlotExercise.id)],
+                                        useRandomWindows: false,
+                                        randomStartHour: 9,
+                                        randomEndHour: 18,
+                                        maxRemindersPerDay: 1,
+                                        minSpacingMinutes: 30,
+                                        quietStartHour: 22,
+                                        quietEndHour: 6,
+                                        skipWeekends: false)
+        let planner = SchedulingService.Planner(settings: settings,
+                                                exercises: exercises,
+                                                completions: [],
+                                                calendar: calendar,
+                                                now: referenceDate())
+        let plan = planner.generatePlan(days: 1)
+        XCTAssertEqual(plan.first?.exercise.id, customSlotExercise.id)
+    }
+
+    private func slot(hour: Int, minute: Int = 0, exerciseID: UUID? = nil) -> ScheduleSlot {
+        ScheduleSlot(hour: hour, minute: minute, exerciseID: exerciseID)
     }
 
     private func sampleExercises(count: Int) -> [Exercise] {

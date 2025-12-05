@@ -14,9 +14,7 @@ struct HomeView: View {
                 HomeDashboardView(viewModel: viewModel,
                                    exercises: exercises,
                                    completions: completions)
-                    .navigationTitle("Move")
                     .toolbar { refreshButton }
-                    .background(Color("MoveBackground").ignoresSafeArea())
             }
             .tabItem { Label("Home", systemImage: "bolt.heart") }
 
@@ -40,21 +38,23 @@ struct HomeView: View {
             }
             .tabItem { Label("Settings", systemImage: "gearshape") }
         }
+        .tint(MoveTheme.accent)
+        .background(MoveTheme.canvas.ignoresSafeArea())
         .task {
-            await viewModel.configureIfNeeded(app: app)
+            viewModel.configureIfNeeded(app: app)
         }
-        .onChange(of: exercises.map(\.id)) { _ in
-            Task { await viewModel.refreshUpcoming() }
+        .onChange(of: exercises.map(\.id)) { _, _ in
+            viewModel.refreshUpcoming()
         }
-        .onChange(of: completions.map(\.id)) { _ in
-            Task { await viewModel.refreshUpcoming() }
+        .onChange(of: completions.map(\.id)) { _, _ in
+            viewModel.refreshUpcoming()
         }
     }
 
     private var refreshButton: some ToolbarContent {
         ToolbarItem(placement: .navigationBarTrailing) {
             Button {
-                Task { await viewModel.refreshUpcoming() }
+                viewModel.refreshUpcoming()
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -72,58 +72,81 @@ private struct HomeDashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
+                nextReminderCard
                 streakCard
-                upcomingCard
-                quickActions
+                rotationCard
+                quickActionCard
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 32)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 24)
+        }
+        .background(MoveTheme.canvas.ignoresSafeArea())
+    }
+
+    private var nextReminderCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Next Reminder")
+                    .font(.headline)
+                if let next = viewModel.upcomingReminders.sorted(by: { $0.fireDate < $1.fireDate }).first {
+                    Text("\(next.emoji) \(next.exerciseName)")
+                        .font(.system(size: 24, weight: .bold, design: .default))
+                        .minimumScaleFactor(0.6)
+                    Text(next.fireDate.formatted(date: .abbreviated, time: .shortened))
+                        .font(.subheadline)
+                        .foregroundStyle(MoveTheme.muted)
+                } else {
+                    EmptyStateView(emoji: "🗓",
+                                   title: "No Reminder",
+                                   message: "Schedule settings determine what appears here.")
+                }
+            }
         }
     }
 
     private var streakCard: some View {
         CardView {
+            let streak = app.streakCalculator.streakCount(from: completions)
             VStack(alignment: .leading, spacing: 12) {
                 Text("Current Streak")
                     .font(.headline)
-                    .foregroundStyle(MoveTheme.text)
-                Text("\(app.streakCalculator.streakCount(from: completions)) days")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                Text("\(streak) Day\(streak == 1 ? "" : "s")")
+                    .font(.system(size: 48, weight: .black, design: .default))
                     .foregroundStyle(MoveTheme.primary)
-                Text("Keep it going by completing at least one reminder each day.")
+                Text(streak == 0 ? "Start building your momentum." : "Keep the momentum going today.")
                     .font(.footnote)
                     .foregroundStyle(MoveTheme.muted)
             }
         }
     }
 
-    private var upcomingCard: some View {
+    private var rotationCard: some View {
         CardView {
+            let active = exercises.filter { $0.isActive }
             VStack(alignment: .leading, spacing: 12) {
-                Text("Next Reminders")
+                Text("Rotation Order")
                     .font(.headline)
-                if viewModel.upcomingReminders.isEmpty {
-                    EmptyStateView(emoji: "✨",
-                                   title: "All clear",
-                                   message: "No reminders are scheduled. Adjust your schedule or add exercises to get started.")
+                if active.isEmpty {
+                    Text("Activate exercises to build your routine.")
+                        .font(.subheadline)
+                        .foregroundStyle(MoveTheme.muted)
                 } else {
-                    ForEach(viewModel.upcomingReminders.prefix(3)) { reminder in
+                    let ordered = viewModel.rotationOrder(exercises: exercises, completions: completions)
+                    ForEach(Array(ordered.enumerated()), id: \.offset) { index, exercise in
                         HStack(spacing: 16) {
-                            Text(reminder.emoji)
-                                .font(.system(size: 36))
+                            Text(String(format: "%02d", index + 1))
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(MoveTheme.primary)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(reminder.exerciseName)
-                                    .font(.headline)
-                                Text(reminder.fireDate.formatted(date: .omitted, time: .shortened))
-                                    .font(.subheadline)
-                                    .foregroundStyle(MoveTheme.muted)
+                                Text("\(exercise.emoji) \(exercise.name)")
+                                    .font(.subheadline.weight(.heavy))
+                                if let instructions = exercise.instructions, !instructions.isEmpty {
+                                    Text(instructions)
+                                        .font(.caption)
+                                        .foregroundStyle(MoveTheme.muted)
+                                }
                             }
-                            Spacer()
-                        }
-                        .padding(.vertical, 8)
-                        if reminder.id != viewModel.upcomingReminders.prefix(3).last?.id {
-                            Divider()
                         }
                     }
                 }
@@ -131,26 +154,64 @@ private struct HomeDashboardView: View {
         }
     }
 
-    private var quickActions: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Actions")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if let exercise = viewModel.suggestedExercise(from: exercises) {
-                Button {
-                    viewModel.completeNow(exercise: exercise, context: modelContext)
-                } label: {
-                    Label("Do \(exercise.name) now", systemImage: "play.circle.fill")
-                        .font(.headline)
+    private var quickActionCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Quick Action")
+                    .font(.headline)
+                if let exercise = viewModel.suggestedExercise(from: exercises, completions: completions) {
+                    Button {
+                        viewModel.completeNow(exercise: exercise, context: modelContext)
+                    } label: {
+                        Label("Log \(exercise.name)", systemImage: "checkmark.circle")
+                            .font(.headline)
+                    }
+                    .buttonStyle(.primary)
+                } else {
+                    Text("Add an exercise to enable quick logging.")
+                        .font(.subheadline)
+                        .foregroundStyle(MoveTheme.muted)
                 }
-                .buttonStyle(.primary)
-            } else {
-                EmptyStateView(emoji: "🛠",
-                               title: "No active exercises",
-                               message: "Activate or add exercises to unlock quick actions.")
+                
+                if !exercises.isEmpty {
+                    Menu {
+                        ForEach(exercises.filter { $0.isActive }.sorted(by: { $0.name < $1.name })) { exercise in
+                            Button {
+                                viewModel.completeNow(exercise: exercise, context: modelContext)
+                            } label: {
+                                Label(exercise.name, systemImage: "checkmark")
+                            }
+                        }
+                    } label: {
+                        Label("Log Other...", systemImage: "list.bullet")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(MoveTheme.background)
+                            .foregroundStyle(MoveTheme.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(MoveTheme.muted.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                }
             }
         }
     }
+
+    private func rotationOrder(for active: [Exercise]) -> [Exercise] {
+        var rotation = SchedulingService.ExerciseRotation(exercises: active, completions: completions)
+        var ordered: [Exercise] = []
+        while ordered.count < active.count {
+            let next = rotation.next()
+            if !ordered.contains(where: { $0.id == next.id }) {
+                ordered.append(next)
+            }
+        }
+        return ordered
+    }
+
 }
 
 #Preview {

@@ -15,7 +15,7 @@ final class ExerciseSelectionTests: XCTestCase {
                      isActive: true)
         }
         let settings = ScheduleSettings(useFixedTimes: true,
-                                        fixedTimes: [components(hour: 9), components(hour: 10), components(hour: 11), components(hour: 12)],
+                                        fixedSlots: [slot(hour: 9), slot(hour: 10), slot(hour: 11), slot(hour: 12)],
                                         useRandomWindows: false,
                                         randomStartHour: 9,
                                         randomEndHour: 12,
@@ -36,7 +36,7 @@ final class ExerciseSelectionTests: XCTestCase {
 
     func testQuietHoursExcluded() {
         let settings = ScheduleSettings(useFixedTimes: true,
-                                        fixedTimes: [components(hour: 22)],
+                                        fixedSlots: [slot(hour: 22)],
                                         useRandomWindows: false,
                                         randomStartHour: 21,
                                         randomEndHour: 23,
@@ -65,10 +65,7 @@ final class ExerciseSelectionTests: XCTestCase {
         calendar.date(from: DateComponents(year: 2024, month: 3, day: 1, hour: 8)) ?? Date()
     }
 
-    private func components(hour: Int, minute: Int = 0) -> DateComponents {
-        var components = DateComponents()
-        components.hour = hour
-        components.minute = minute
-        return components
+    private func slot(hour: Int, minute: Int = 0, exerciseID: UUID? = nil) -> ScheduleSlot {
+        ScheduleSlot(hour: hour, minute: minute, exerciseID: exerciseID)
     }
 }

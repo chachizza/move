@@ -3,11 +3,17 @@ import SwiftUI
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding()
+            .font(.headline)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .background(MoveTheme.primary)
-            .foregroundColor(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .foregroundColor(MoveTheme.text)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(MoveTheme.canvas, lineWidth: 3)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             .opacity(configuration.isPressed ? 0.7 : 1.0)
     }
 }

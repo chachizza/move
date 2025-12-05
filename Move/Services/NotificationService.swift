@@ -1,11 +1,11 @@
 import Foundation
 import SwiftData
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// Wraps `UNUserNotificationCenter` to manage authorization, categories, and action handling.
 /// https://developer.apple.com/documentation/usernotifications/unusernotificationcenter
 @MainActor
-final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+final class NotificationService: NSObject {
     private let center = UNUserNotificationCenter.current()
     private let container: ModelContainer
     private var schedulingService: SchedulingService?
@@ -35,7 +35,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         let swap = UNNotificationAction(identifier: NotificationAction.swap.rawValue,
                                          title: NotificationAction.swap.title,
                                          options: [.foreground])
-        let category = UNNotificationCategory(identifier: "MOVE_REMINDER",
+        let category = UNNotificationCategory(identifier: Constants.Notifications.categoryIdentifier,
                                               actions: [done, snooze, swap],
                                               intentIdentifiers: [],
                                               options: [.customDismissAction])
@@ -57,16 +57,23 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     func replacePendingRequests(with requests: [UNNotificationRequest]) async {
         center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        try? await center.setBadgeCount(0)
+        guard !requests.isEmpty else { return }
         for request in requests {
             await add(request: request)
         }
     }
 
     func add(request: UNNotificationRequest) async {
-        do {
-            try await center.add(request)
-        } catch {
-            print("Failed to schedule notification \(request.identifier): \(error)")
+        await withCheckedContinuation { continuation in
+            let identifier = request.identifier
+            center.add(request) { error in
+                if let error {
+                    print("Failed to schedule notification \(identifier): \(error)")
+                }
+                continuation.resume()
+            }
         }
     }
 
@@ -82,20 +89,11 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                didReceive response: UNNotificationResponse,
-                                withCompletionHandler completionHandler: @escaping () -> Void) {
-        Task {
-            await handle(response: response)
-            completionHandler()
-        }
-    }
-
     private func handle(response: UNNotificationResponse) async {
         guard let info = response.notification.request.content.userInfo as? [String: Any],
-              let exerciseIDString = info[NotificationPayloadKey.exerciseID] as? String,
+              let exerciseIDString = info[Constants.Notifications.PayloadKeys.exerciseID] as? String,
               let exerciseID = UUID(uuidString: exerciseIDString),
-              let scheduledDateString = info[NotificationPayloadKey.scheduledDate] as? String,
+              let scheduledDateString = info[Constants.Notifications.PayloadKeys.scheduledDate] as? String,
               let scheduledDate = isoFormatter.date(from: scheduledDateString) else {
             return
         }
@@ -122,8 +120,22 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             let completion = Completion(exerciseID: exerciseID)
             context.insert(completion)
             try context.save()
+            try? await center.setBadgeCount(0)
         } catch {
             print("Failed to log completion from notification: \(error)")
+        }
+    }
+}
+
+@MainActor
+extension NotificationService: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.handle(response: response)
+            completionHandler()
         }
     }
 }
