@@ -75,12 +75,12 @@ actor SchedulingService {
         content.title = exercise.name
         content.body = "Try \(exercise.name)."
         content.sound = .default
-        content.categoryIdentifier = "MOVE_REMINDER"
+        content.categoryIdentifier = Constants.Notifications.categoryIdentifier
         content.userInfo = [
-            NotificationPayloadKey.exerciseID: exercise.id.uuidString,
-            NotificationPayloadKey.scheduledDate: isoFormatter.string(from: Date().addingTimeInterval(60)),
-            NotificationPayloadKey.requestID: "test-\(UUID().uuidString)",
-            NotificationPayloadKey.exerciseEmoji: exercise.emoji
+            Constants.Notifications.PayloadKeys.exerciseID: exercise.id.uuidString,
+            Constants.Notifications.PayloadKeys.scheduledDate: isoFormatter.string(from: Date().addingTimeInterval(60)),
+            Constants.Notifications.PayloadKeys.requestID: "test-\(UUID().uuidString)",
+            Constants.Notifications.PayloadKeys.exerciseEmoji: exercise.emoji
         ]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 60, repeats: false)
@@ -94,12 +94,12 @@ actor SchedulingService {
         let requests = await notificationService.pendingRequests()
         let summaries = requests.compactMap { request -> ReminderSummary? in
             guard let fireDate = (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate(),
-                  let exerciseIDString = request.content.userInfo[NotificationPayloadKey.exerciseID] as? String,
+                  let exerciseIDString = request.content.userInfo[Constants.Notifications.PayloadKeys.exerciseID] as? String,
                   let exerciseID = UUID(uuidString: exerciseIDString) else {
                 return nil
             }
             let name = request.content.title
-            let rawEmoji = request.content.userInfo[NotificationPayloadKey.exerciseEmoji] as? String ?? ""
+            let rawEmoji = request.content.userInfo[Constants.Notifications.PayloadKeys.exerciseEmoji] as? String ?? ""
             let emoji: String
             if !rawEmoji.isEmpty {
                 emoji = rawEmoji
@@ -150,12 +150,12 @@ actor SchedulingService {
         content.title = reminder.exercise.name
         content.body = [reminder.displayText, "Tap Done when finished or Snooze for 15 minutes."].joined(separator: "\n\n")
         content.sound = .default
-        content.categoryIdentifier = "MOVE_REMINDER"
+        content.categoryIdentifier = Constants.Notifications.categoryIdentifier
         content.userInfo = [
-            NotificationPayloadKey.exerciseID: reminder.exercise.id.uuidString,
-            NotificationPayloadKey.scheduledDate: isoFormatter.string(from: reminder.fireDate),
-            NotificationPayloadKey.requestID: reminder.id,
-            NotificationPayloadKey.exerciseEmoji: reminder.exercise.emoji
+            Constants.Notifications.PayloadKeys.exerciseID: reminder.exercise.id.uuidString,
+            Constants.Notifications.PayloadKeys.scheduledDate: isoFormatter.string(from: reminder.fireDate),
+            Constants.Notifications.PayloadKeys.requestID: reminder.id,
+            Constants.Notifications.PayloadKeys.exerciseEmoji: reminder.exercise.emoji
         ]
 
         let triggerDate = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.fireDate)

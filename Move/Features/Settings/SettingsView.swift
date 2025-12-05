@@ -63,10 +63,7 @@ struct SettingsView: View {
                         Task { await viewModel.refreshPendingReminderCount() }
                     }
                     .buttonStyle(.primary)
-                    Button("Regenerate Next 7 Days") {
-                        Task { await viewModel.regenerateSchedule() }
-                    }
-                    .buttonStyle(.primary)
+
                 }
             }
         }

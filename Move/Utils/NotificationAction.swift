@@ -14,9 +14,17 @@ enum NotificationAction: String, CaseIterable {
     }
 }
 
-enum NotificationPayloadKey {
-    static let exerciseID = "exerciseID"
-    static let scheduledDate = "scheduledDate"
-    static let requestID = "requestID"
-    static let exerciseEmoji = "exerciseEmoji"
+enum Constants {
+    enum Notifications {
+        static let categoryIdentifier = "MOVE_REMINDER"
+        
+        enum PayloadKeys {
+            static let exerciseID = "exerciseID"
+            static let scheduledDate = "scheduledDate"
+            static let requestID = "requestID"
+            static let exerciseEmoji = "exerciseEmoji"
+        }
+    }
 }
+
+

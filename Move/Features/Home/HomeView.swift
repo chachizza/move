@@ -91,7 +91,7 @@ private struct HomeDashboardView: View {
                     .font(.headline)
                 if let next = viewModel.upcomingReminders.sorted(by: { $0.fireDate < $1.fireDate }).first {
                     Text("\(next.emoji) \(next.exerciseName)")
-                        .font(.system(size: 32, weight: .heavy, design: .default))
+                        .font(.system(size: 24, weight: .bold, design: .default))
                         .minimumScaleFactor(0.6)
                     Text(next.fireDate.formatted(date: .abbreviated, time: .shortened))
                         .font(.subheadline)
@@ -132,7 +132,7 @@ private struct HomeDashboardView: View {
                         .font(.subheadline)
                         .foregroundStyle(MoveTheme.muted)
                 } else {
-                    let ordered = rotationOrder(for: active)
+                    let ordered = viewModel.rotationOrder(exercises: exercises, completions: completions)
                     ForEach(Array(ordered.enumerated()), id: \.offset) { index, exercise in
                         HStack(spacing: 16) {
                             Text(String(format: "%02d", index + 1))
@@ -171,6 +171,30 @@ private struct HomeDashboardView: View {
                     Text("Add an exercise to enable quick logging.")
                         .font(.subheadline)
                         .foregroundStyle(MoveTheme.muted)
+                }
+                
+                if !exercises.isEmpty {
+                    Menu {
+                        ForEach(exercises.filter { $0.isActive }.sorted(by: { $0.name < $1.name })) { exercise in
+                            Button {
+                                viewModel.completeNow(exercise: exercise, context: modelContext)
+                            } label: {
+                                Label(exercise.name, systemImage: "checkmark")
+                            }
+                        }
+                    } label: {
+                        Label("Log Other...", systemImage: "list.bullet")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(MoveTheme.background)
+                            .foregroundStyle(MoveTheme.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(MoveTheme.muted.opacity(0.3), lineWidth: 1)
+                            )
+                    }
                 }
             }
         }

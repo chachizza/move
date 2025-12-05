@@ -42,6 +42,21 @@ final class HomeViewModel: ObservableObject {
         return rotation.next()
     }
 
+    func rotationOrder(exercises: [Exercise], completions: [Completion]) -> [Exercise] {
+        let active = exercises.filter { $0.isActive }
+        guard !active.isEmpty else { return [] }
+        
+        var rotation = SchedulingService.ExerciseRotation(exercises: active, completions: completions)
+        var ordered: [Exercise] = []
+        while ordered.count < active.count {
+            let next = rotation.next()
+            if !ordered.contains(where: { $0.id == next.id }) {
+                ordered.append(next)
+            }
+        }
+        return ordered
+    }
+
     func completeNow(exercise: Exercise, context: ModelContext) {
         let completion = Completion(exerciseID: exercise.id)
         context.insert(completion)

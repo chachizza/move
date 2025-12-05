@@ -16,10 +16,30 @@ final class SeedDataService {
 
         let descriptor = FetchDescriptor<Exercise>()
         let existing = (try? context.fetch(descriptor)) ?? []
-        guard existing.isEmpty else { return }
+        
+        // 1. Remove old default exercises
+        let oldDefaults = ["Neck Stretch", "Shoulder Rolls", "Calf Raises", "Plank", "Posture Reset", "Eye 20-20-20"]
+        let toRemove = existing.filter { oldDefaults.contains($0.name) }
+        
+        if !toRemove.isEmpty {
+            print("Removing \(toRemove.count) old default exercises.")
+            toRemove.forEach { context.delete($0) }
+            try? context.save()
+        }
 
+        // 2. Load new seeds and insert if missing
         let seeds = SeedDataLoader.loadExercises()
-        seeds.forEach { context.insert($0) }
+        // Re-fetch to get current state after deletion
+        let current = (try? context.fetch(descriptor)) ?? []
+        
+        for seed in seeds {
+            // Check by ID or Name to avoid duplicates
+            if !current.contains(where: { $0.id == seed.id || $0.name == seed.name }) {
+                print("Seeding new exercise: \(seed.name)")
+                context.insert(seed)
+            }
+        }
+        
         do {
             try context.save()
         } catch {

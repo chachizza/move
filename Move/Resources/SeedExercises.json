@@ -1,25 +1,5 @@
 [
   {
-    "id": "11111111-1111-1111-1111-111111111111",
-    "name": "Neck Stretch",
-    "emoji": "🧘",
-    "category": "Mobility",
-    "durationMinutes": 2,
-    "difficulty": 1,
-    "instructions": "Gently tilt your head side to side and hold each stretch for 15 seconds.",
-    "isActive": true
-  },
-  {
-    "id": "22222222-2222-2222-2222-222222222222",
-    "name": "Shoulder Rolls",
-    "emoji": "💪",
-    "category": "Mobility",
-    "durationMinutes": 1,
-    "difficulty": 1,
-    "instructions": "Roll your shoulders backward 10 times, then forward 10 times.",
-    "isActive": true
-  },
-  {
     "id": "33333333-3333-3333-3333-333333333333",
     "name": "Air Squats",
     "emoji": "🏋️",
@@ -30,43 +10,43 @@
     "isActive": true
   },
   {
-    "id": "44444444-4444-4444-4444-444444444444",
-    "name": "Calf Raises",
-    "emoji": "🦵",
-    "category": "Strength",
-    "durationMinutes": 2,
-    "difficulty": 1,
-    "instructions": "Rise up on your toes and slowly lower. Repeat 20 times.",
-    "isActive": true
-  },
-  {
-    "id": "55555555-5555-5555-5555-555555555555",
-    "name": "Plank",
+    "id": "88888888-8888-8888-8888-888888888888",
+    "name": "Eight Point Plank",
     "emoji": "🧱",
     "category": "Core",
     "durationMinutes": 2,
     "difficulty": 3,
-    "instructions": "Hold a forearm plank position, keeping back straight.",
+    "instructions": "Hold a plank with knees, toes, elbows, and hands touching the ground (8 points).",
     "isActive": true
   },
   {
-    "id": "66666666-6666-6666-6666-666666666666",
-    "name": "Posture Reset",
-    "emoji": "🧍",
+    "id": "99999999-9999-9999-9999-999999999999",
+    "name": "Foundation Training",
+    "emoji": "🧘",
     "category": "Posture",
-    "durationMinutes": 1,
-    "difficulty": 1,
-    "instructions": "Stand up tall, roll shoulders back, and take three deep breaths.",
+    "durationMinutes": 4,
+    "difficulty": 2,
+    "instructions": "Perform the Founder pose: hinge at hips, weight back, arms forward, hold for tension.",
     "isActive": true
   },
   {
-    "id": "77777777-7777-7777-7777-777777777777",
-    "name": "Eye 20-20-20",
-    "emoji": "👀",
-    "category": "Break",
-    "durationMinutes": 1,
+    "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "name": "Push-ups",
+    "emoji": "💪",
+    "category": "Strength",
+    "durationMinutes": 2,
+    "difficulty": 2,
+    "instructions": "Do 10 push-ups. Keep body straight and core engaged. Modify on knees if needed.",
+    "isActive": true
+  },
+  {
+    "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "name": "Band Exercises",
+    "emoji": "🎗️",
+    "category": "Mobility",
+    "durationMinutes": 3,
     "difficulty": 1,
-    "instructions": "Every 20 minutes, look at something 20 feet away for 20 seconds.",
+    "instructions": "Perform band pull-aparts or rows to activate upper back and shoulders.",
     "isActive": true
   }
 ]

@@ -35,7 +35,7 @@ final class NotificationService: NSObject {
         let swap = UNNotificationAction(identifier: NotificationAction.swap.rawValue,
                                          title: NotificationAction.swap.title,
                                          options: [.foreground])
-        let category = UNNotificationCategory(identifier: "MOVE_REMINDER",
+        let category = UNNotificationCategory(identifier: Constants.Notifications.categoryIdentifier,
                                               actions: [done, snooze, swap],
                                               intentIdentifiers: [],
                                               options: [.customDismissAction])
@@ -91,9 +91,9 @@ final class NotificationService: NSObject {
 
     private func handle(response: UNNotificationResponse) async {
         guard let info = response.notification.request.content.userInfo as? [String: Any],
-              let exerciseIDString = info[NotificationPayloadKey.exerciseID] as? String,
+              let exerciseIDString = info[Constants.Notifications.PayloadKeys.exerciseID] as? String,
               let exerciseID = UUID(uuidString: exerciseIDString),
-              let scheduledDateString = info[NotificationPayloadKey.scheduledDate] as? String,
+              let scheduledDateString = info[Constants.Notifications.PayloadKeys.scheduledDate] as? String,
               let scheduledDate = isoFormatter.date(from: scheduledDateString) else {
             return
         }
